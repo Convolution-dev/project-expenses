@@ -28,11 +28,11 @@ jobs:
       - name: Agregar al Project V2 y actualizar Status
         env:
           GH_TOKEN: ${{ secrets.ORG_PROJECT_TOKEN }}
-          OWNER: Convolution-dev
-          PROJECT_NUMBER: "2"
+          PROJECT_ID: PVT_kwDOEJS8884BjmUc   # Convolution Ops (orgs/Convolution-dev/projects/2)
           EVENT: ${{ github.event_name }}
           ACTION: ${{ github.event.action }}
           ITEM_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+          CONTENT_ID: ${{ github.event.issue.node_id || github.event.pull_request.node_id }}
           MERGED: ${{ github.event.pull_request.merged }}
           LABEL: ${{ github.event.label.name }}
           ISSUE_STATE: ${{ github.event.issue.state }}
@@ -56,25 +56,34 @@ jobs:
 
           echo "evento=$EVENT/$ACTION url=$ITEM_URL status=${STATUS:-<sin cambio>}"
 
-          PROJECT_ID=$(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .id)
-          FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json)
-          FIELD_ID=$(jq -r '.fields[] | select(.name=="Status") | .id' <<<"$FIELDS")
+          # Campo Status y sus opciones, por GraphQL con el ID del proyecto
+          # (gh project ... --owner exige read:org; esto no).
+          FIELD=$(gh api graphql -F project="$PROJECT_ID" -f query='
+            query($project:ID!){ node(id:$project){ ... on ProjectV2 {
+              field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } } } } }' \
+            --jq '.data.node.field')
+          FIELD_ID=$(jq -r .id <<<"$FIELD")
 
-          # set_status <url> <status>: agrega el item (idempotente) y mueve la columna
+          # set_status <content_node_id> <status>: agrega el item (idempotente) y mueve la columna
           set_status() {
-            local url="$1" status="$2" item_id option_id
-            item_id=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$url" --format json --jq .id)
-            [[ -z "$status" ]] && { echo "  $url agregado, sin cambio de Status"; return 0; }
-            option_id=$(jq -r --arg s "$status" '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id' <<<"$FIELDS")
+            local content_id="$1" status="$2" item_id option_id
+            item_id=$(gh api graphql -F project="$PROJECT_ID" -F content="$content_id" -f query='
+              mutation($project:ID!,$content:ID!){
+                addProjectV2ItemById(input:{projectId:$project,contentId:$content}){ item { id } } }' \
+              --jq '.data.addProjectV2ItemById.item.id')
+            [[ -z "$status" ]] && { echo "  $content_id agregado, sin cambio de Status"; return 0; }
+            option_id=$(jq -r --arg s "$status" '.options[] | select(.name==$s) | .id' <<<"$FIELD")
             if [[ -z "$option_id" ]]; then
-              echo "::warning::El Status '$status' no existe en el proyecto; $url agregado sin mover"; return 0
+              echo "::warning::El Status '$status' no existe en el proyecto; item agregado sin mover"; return 0
             fi
-            gh project item-edit --project-id "$PROJECT_ID" --id "$item_id" \
-              --field-id "$FIELD_ID" --single-select-option-id "$option_id" >/dev/null
-            echo "  $url -> $status"
+            gh api graphql -F project="$PROJECT_ID" -F item="$item_id" -F field="$FIELD_ID" -F option="$option_id" -f query='
+              mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){
+                updateProjectV2ItemFieldValue(input:{projectId:$project,itemId:$item,fieldId:$field,
+                  value:{singleSelectOptionId:$option}}){ projectV2Item { id } } }' >/dev/null
+            echo "  item $item_id -> $status"
           }
 
-          set_status "$ITEM_URL" "$STATUS"
+          set_status "$CONTENT_ID" "$STATUS"
 
           # --- Epics: si esta issue es sub-issue, sincronizar el padre ---
           [[ "$EVENT" == "issues" ]] || exit 0
@@ -82,10 +91,11 @@ jobs:
             -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$ISSUE_NUMBER" \
             -f query='query($owner:String!,$name:String!,$number:Int!){
               repository(owner:$owner,name:$name){ issue(number:$number){
-                parent { url state subIssuesSummary { total completed } } } } }' \
+                parent { id url state subIssuesSummary { total completed } } } } }' \
             --jq '.data.repository.issue.parent // empty')
           [[ -z "$PARENT" ]] && exit 0
 
+          P_ID=$(jq -r .id <<<"$PARENT")
           P_URL=$(jq -r .url <<<"$PARENT")
           P_STATE=$(jq -r .state <<<"$PARENT")
           P_TOTAL=$(jq -r .subIssuesSummary.total <<<"$PARENT")
@@ -101,4 +111,4 @@ jobs:
           else
             P_STATUS=""   # recién empieza: la dejamos donde esté
           fi
-          set_status "$P_URL" "$P_STATUS"
+          set_status "$P_ID" "$P_STATUS"
