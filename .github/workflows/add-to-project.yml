@@ -1,17 +1,74 @@
-name: Auto-Add to Global Project
+name: Sync to Global Project
+
+# Todo lo que pasa con issues y PRs se refleja en el board Convolution Ops:
+#   issue abierta / reabierta      -> Todo
+#   issue asignada                 -> In Progress
+#   issue con label "backlog"      -> Backlog
+#   issue cerrada                  -> Done
+#   PR abierto / listo / reabierto -> In Progress
+#   PR pasado a draft              -> In Progress
+#   PR cerrado o mergeado          -> Done
 
 on:
   issues:
-    types: [opened]
+    types: [opened, reopened, closed, assigned, labeled, unlabeled]
+  pull_request:
+    types: [opened, reopened, ready_for_review, converted_to_draft, closed]
+
+concurrency:
+  group: project-sync-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
 
 jobs:
-  add-to-project:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Agregar issue al Project V2
+      - name: Agregar al Project V2 y actualizar Status
         env:
           GH_TOKEN: ${{ secrets.ORG_PROJECT_TOKEN }}
-          ISSUE_URL: ${{ github.event.issue.html_url }}
+          OWNER: Convolution-dev
           PROJECT_NUMBER: "2"
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          ITEM_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          LABEL: ${{ github.event.label.name }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
         run: |
-          gh project item-add "$PROJECT_NUMBER" --owner "Convolution-dev" --url "$ISSUE_URL"
+          set -euo pipefail
+
+          case "$EVENT:$ACTION" in
+            issues:opened|issues:reopened)          STATUS="Todo" ;;
+            issues:assigned)                        STATUS="In Progress" ;;
+            issues:closed)                          STATUS="Done" ;;
+            issues:labeled)
+              [[ "$LABEL" == "backlog" ]] && STATUS="Backlog" || STATUS="" ;;
+            issues:unlabeled)
+              [[ "$LABEL" == "backlog" && "$ISSUE_STATE" == "open" ]] && STATUS="Todo" || STATUS="" ;;
+            pull_request:opened|pull_request:reopened|pull_request:ready_for_review|pull_request:converted_to_draft)
+              STATUS="In Progress" ;;
+            pull_request:closed)                    STATUS="Done" ;;
+            *)                                      STATUS="" ;;
+          esac
+
+          echo "evento=$EVENT/$ACTION url=$ITEM_URL status=${STATUS:-<sin cambio>}"
+
+          # item-add es idempotente: devuelve el item existente si ya estaba
+          ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$ITEM_URL" --format json --jq .id)
+          echo "item=$ITEM_ID"
+
+          [[ -z "$STATUS" ]] && exit 0
+
+          PROJECT_ID=$(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .id)
+          FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json)
+          FIELD_ID=$(jq -r '.fields[] | select(.name=="Status") | .id' <<<"$FIELDS")
+          OPTION_ID=$(jq -r --arg s "$STATUS" '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id' <<<"$FIELDS")
+
+          if [[ -z "$OPTION_ID" ]]; then
+            echo "::warning::El Status '$STATUS' no existe en el proyecto; item agregado sin mover"
+            exit 0
+          fi
+
+          gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" \
+            --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID"
+          echo "status -> $STATUS"
