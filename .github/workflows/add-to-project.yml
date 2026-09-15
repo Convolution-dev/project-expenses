@@ -8,6 +8,8 @@ name: Sync to Global Project
 #   PR abierto / listo / reabierto -> In Progress
 #   PR pasado a draft              -> In Progress
 #   PR cerrado o mergeado          -> Done
+#   sub-issue cambia               -> el padre (epic) pasa a In Progress,
+#                                     y a Done cuando todas están cerradas
 
 on:
   issues:
@@ -34,6 +36,7 @@ jobs:
           MERGED: ${{ github.event.pull_request.merged }}
           LABEL: ${{ github.event.label.name }}
           ISSUE_STATE: ${{ github.event.issue.state }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
 
@@ -53,22 +56,49 @@ jobs:
 
           echo "evento=$EVENT/$ACTION url=$ITEM_URL status=${STATUS:-<sin cambio>}"
 
-          # item-add es idempotente: devuelve el item existente si ya estaba
-          ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$ITEM_URL" --format json --jq .id)
-          echo "item=$ITEM_ID"
-
-          [[ -z "$STATUS" ]] && exit 0
-
           PROJECT_ID=$(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .id)
           FIELDS=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json)
           FIELD_ID=$(jq -r '.fields[] | select(.name=="Status") | .id' <<<"$FIELDS")
-          OPTION_ID=$(jq -r --arg s "$STATUS" '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id' <<<"$FIELDS")
 
-          if [[ -z "$OPTION_ID" ]]; then
-            echo "::warning::El Status '$STATUS' no existe en el proyecto; item agregado sin mover"
-            exit 0
+          # set_status <url> <status>: agrega el item (idempotente) y mueve la columna
+          set_status() {
+            local url="$1" status="$2" item_id option_id
+            item_id=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$url" --format json --jq .id)
+            [[ -z "$status" ]] && { echo "  $url agregado, sin cambio de Status"; return 0; }
+            option_id=$(jq -r --arg s "$status" '.fields[] | select(.name=="Status") | .options[] | select(.name==$s) | .id' <<<"$FIELDS")
+            if [[ -z "$option_id" ]]; then
+              echo "::warning::El Status '$status' no existe en el proyecto; $url agregado sin mover"; return 0
+            fi
+            gh project item-edit --project-id "$PROJECT_ID" --id "$item_id" \
+              --field-id "$FIELD_ID" --single-select-option-id "$option_id" >/dev/null
+            echo "  $url -> $status"
+          }
+
+          set_status "$ITEM_URL" "$STATUS"
+
+          # --- Epics: si esta issue es sub-issue, sincronizar el padre ---
+          [[ "$EVENT" == "issues" ]] || exit 0
+          PARENT=$(gh api graphql -H 'GraphQL-Features: sub_issues' \
+            -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$ISSUE_NUMBER" \
+            -f query='query($owner:String!,$name:String!,$number:Int!){
+              repository(owner:$owner,name:$name){ issue(number:$number){
+                parent { url state subIssuesSummary { total completed } } } } }' \
+            --jq '.data.repository.issue.parent // empty')
+          [[ -z "$PARENT" ]] && exit 0
+
+          P_URL=$(jq -r .url <<<"$PARENT")
+          P_STATE=$(jq -r .state <<<"$PARENT")
+          P_TOTAL=$(jq -r .subIssuesSummary.total <<<"$PARENT")
+          P_DONE=$(jq -r .subIssuesSummary.completed <<<"$PARENT")
+          echo "epic: $P_URL ($P_DONE/$P_TOTAL sub-issues cerradas, $P_STATE)"
+
+          if [[ "$P_STATE" == "CLOSED" ]]; then
+            P_STATUS="Done"
+          elif (( P_TOTAL > 0 && P_DONE == P_TOTAL )); then
+            P_STATUS="Done"
+          elif (( P_DONE > 0 )) || [[ "$STATUS" == "In Progress" ]]; then
+            P_STATUS="In Progress"
+          else
+            P_STATUS=""   # recién empieza: la dejamos donde esté
           fi
-
-          gh project item-edit --project-id "$PROJECT_ID" --id "$ITEM_ID" \
-            --field-id "$FIELD_ID" --single-select-option-id "$OPTION_ID"
-          echo "status -> $STATUS"
+          set_status "$P_URL" "$P_STATUS"
