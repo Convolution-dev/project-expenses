@@ -76,7 +76,7 @@ jobs:
             if [[ -z "$option_id" ]]; then
               echo "::warning::El Status '$status' no existe en el proyecto; item agregado sin mover"; return 0
             fi
-            gh api graphql -F project="$PROJECT_ID" -F item="$item_id" -F field="$FIELD_ID" -F option="$option_id" -f query='
+            gh api graphql -F project="$PROJECT_ID" -F item="$item_id" -F field="$FIELD_ID" -f option="$option_id" -f query='
               mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){
                 updateProjectV2ItemFieldValue(input:{projectId:$project,itemId:$item,fieldId:$field,
                   value:{singleSelectOptionId:$option}}){ projectV2Item { id } } }' >/dev/null
