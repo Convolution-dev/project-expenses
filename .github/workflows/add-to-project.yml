@@ -1,0 +1,17 @@
+name: Auto-Add to Global Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Agregar issue al Project V2
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PROJECT_TOKEN }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          PROJECT_NUMBER: "2"
+        run: |
+          gh project item-add "$PROJECT_NUMBER" --owner "Convolution-dev" --url "$ISSUE_URL"
