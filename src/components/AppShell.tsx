@@ -24,9 +24,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </span>
             Convolution.Expenses
           </Link>
-          <Button variant="secondary" size="sm" onClick={() => void signOut()}>
-            Cerrar sesión
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/costos" className="text-sm text-muted hover:text-foreground">
+              Costos
+            </Link>
+            <Button variant="secondary" size="sm" onClick={() => void signOut()}>
+              Cerrar sesión
+            </Button>
+          </div>
         </Container>
       </header>
       <main className="flex-1 py-8">

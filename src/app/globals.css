@@ -19,6 +19,15 @@
   --success: #16a34a;
   --success-foreground: #ffffff;
   --ring: #a5b4fc;
+  /* Categorical chart slots (dataviz reference palette), fixed order. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --warning: #fab219;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -36,6 +45,13 @@
     --success: #22c55e;
     --success-foreground: #ffffff;
     --ring: #4338ca;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
   }
 }
 
@@ -53,6 +69,7 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-ring: var(--ring);
+  --color-warning: var(--warning);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius: 0.625rem;
