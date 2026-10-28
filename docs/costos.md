@@ -1,7 +1,7 @@
 # Costos por cliente
 
 `/costos` muestra cuánto le cuesta a Convolution cada **cliente = proyecto + org de Clerk**, por mes.
-La API vive en `src/app/api/costs/[[...route]]/route.ts` (Hono) y la lógica en `src/server/costs/`.
+La API vive en `src/app/api/costs/report/route.ts` y la lógica en `src/server/costs/`.
 
 ## Cómo se calcula
 
