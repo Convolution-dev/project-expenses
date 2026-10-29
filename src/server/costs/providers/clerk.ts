@@ -56,7 +56,7 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
 
   await Promise.all(
     projects.map((project) => guarded(project.label, async () => {
-      if (!project.clerkSecretEnv) return;
+      if (!project.clerkSecretEnv || project.excluded) return;
       const secret = credentials.env(project.clerkSecretEnv);
       if (!secret) {
         warnings.push(`Clerk: falta ${project.clerkSecretEnv} (${project.label})`);
@@ -93,7 +93,7 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
   // Dev instances only contribute org names, so their org-tagged costs reach a client.
   await Promise.all(
     projects.map((project) => guarded(`${project.label} dev`, async () => {
-      if (!project.clerkDevSecretEnv) return;
+      if (!project.clerkDevSecretEnv || project.excluded) return;
       const secret = credentials.env(project.clerkDevSecretEnv);
       if (!secret) {
         warnings.push(`Clerk: falta ${project.clerkDevSecretEnv} (dev de ${project.label})`);

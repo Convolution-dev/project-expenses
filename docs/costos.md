@@ -31,6 +31,7 @@ Los costos compartidos (sin proyecto) van a los clientes facturables; los proyec
 | Uso por org | `GET /internal/cost-usage` de cada app | Bytes almacenados por org (foto actual). Cache de 24 h por proyecto: el endpoint recorre todas las tablas |
 
 El mapeo de recursos a proyectos está en `src/server/costs/catalog.ts`.
+Un proyecto con `excluded: true` se reconoce pero no suma: sus costos no aparecen en `/costos` (hoy: MiniCRM minicrm.space, sin uso real).
 
 ## Variables de entorno
 

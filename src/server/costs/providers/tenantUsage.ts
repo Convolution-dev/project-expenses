@@ -20,7 +20,7 @@ export async function tenantStorage(): Promise<ProviderResult> {
 
   await Promise.all(
     projects.map(async (project) => {
-      if (!project.usageEndpoint) return;
+      if (!project.usageEndpoint || project.excluded) return;
       const url = credentials.env(project.usageEndpoint.urlEnv);
       const secret = credentials.env(project.usageEndpoint.secretEnv);
       if (!url || !secret) {
