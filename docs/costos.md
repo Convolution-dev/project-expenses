@@ -1,6 +1,7 @@
 # Costos por cliente
 
 `/costos` muestra cuánto le cuesta a Convolution cada **cliente = proyecto + org de Clerk**, por mes.
+Un cliente que usa varias apps u orgs se agrupa en una sola fila con `clients` en `src/server/costs/catalog.ts` (por ejemplo Persys = Persys + Persys CRM). Cada org se busca por nombre o slug de Clerk; si no aparece, sale un aviso.
 La API vive en `src/app/api/costs/report/route.ts` y la lógica en `src/server/costs/`.
 
 ## Cómo se calcula
@@ -51,6 +52,7 @@ CLERK_SECRET_KEY_PERSYS=
 CLERK_SECRET_KEY_MINICRM=
 CLERK_SECRET_KEY_MINICRM2=
 CLERK_SECRET_KEY_GESTION_JUDICIAL=
+CLERK_SECRET_KEY_GESTION_JUDICIAL_DEV=  # instancia dev: solo para asignar sus orgs a un cliente
 USAGE_URL_CRM=                     # https://<deployment>.convex.site/internal/cost-usage
 USAGE_SECRET_CRM=                  # = COST_REPORT_SECRET de esa app
 USAGE_URL_PERSYS_CRM=

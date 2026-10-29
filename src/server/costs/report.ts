@@ -1,4 +1,11 @@
-import { fixedCostPolicy, manualFixedCosts, projects, type ProjectConfig } from "@/server/costs/catalog";
+import {
+  clients as clientCatalog,
+  fixedCostPolicy,
+  manualFixedCosts,
+  projects,
+  type ClientConfig,
+  type ProjectConfig,
+} from "@/server/costs/catalog";
 import { MissingCredential } from "@/server/costs/credentials";
 import { aiGatewayCosts } from "@/server/costs/providers/aiGateway";
 import { clerkOrgs } from "@/server/costs/providers/clerk";
@@ -126,7 +133,13 @@ export async function buildReport(month: string): Promise<Report> {
   };
 }
 
-export function allocate(lines: CostLine[], orgs: OrgInfo[], weights: OrgWeights[], warnings: string[]): ClientRow[] {
+export function allocate(
+  lines: CostLine[],
+  orgs: OrgInfo[],
+  weights: OrgWeights[],
+  warnings: string[],
+  clientConfigs: ClientConfig[] = clientCatalog,
+): ClientRow[] {
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const orgById = new Map(orgs.map((o) => [o.orgId, o]));
   const rows = new Map<string, ClientRow>();
@@ -144,7 +157,7 @@ export function allocate(lines: CostLine[], orgs: OrgInfo[], weights: OrgWeights
         projectLabel: project?.label ?? (projectId === UNASSIGNED ? "Sin asignar" : projectId),
         orgId,
         orgName:
-          org?.name ??
+          (org && (org.dev ? `${org.name} (dev)` : org.name)) ??
           (singleTenant
             ? project.label
             : orgId === NO_BREAKDOWN
@@ -224,8 +237,10 @@ export function allocate(lines: CostLine[], orgs: OrgInfo[], weights: OrgWeights
     }
   }
 
+  const grouped = groupClients([...rows.values()], orgById, clientConfigs, warnings);
+
   // Shared fixed costs (team plans, seats) go to billable clients by policy.
-  const billable = [...rows.values()].filter(
+  const billable = grouped.filter(
     (r) => !r.internal && r.projectId !== UNASSIGNED && r.orgId !== NO_BREAKDOWN && (r.total > 0 || (r.activeUsers ?? 0) > 0),
   );
   if (billable.length > 0) {
@@ -245,8 +260,79 @@ export function allocate(lines: CostLine[], orgs: OrgInfo[], weights: OrgWeights
       });
     }
   } else {
-    for (const line of shared) put(row(UNASSIGNED, null), line);
+    for (const line of shared) {
+      const unassigned = row(UNASSIGNED, null);
+      if (!grouped.includes(unassigned)) grouped.push(unassigned);
+      put(unassigned, line);
+    }
   }
 
-  return [...rows.values()];
+  return grouped;
+}
+
+/**
+ * Folds the (project, org) rows of each configured client into one row, so a
+ * customer using several apps or orgs shows once and counts once for shared costs.
+ */
+function groupClients(
+  rows: ClientRow[],
+  orgById: Map<string, OrgInfo>,
+  clientConfigs: ClientConfig[],
+  warnings: string[],
+): ClientRow[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const memberMatches = (m: ClientConfig["members"][number], r: ClientRow) => {
+    if (m.projectId !== r.projectId) return false;
+    if (!m.org) return true;
+    const org = r.orgId ? orgById.get(r.orgId) : undefined;
+    return !!org && [org.name, org.slug].some((n) => n && norm(n) === norm(m.org!));
+  };
+
+  const result: ClientRow[] = [];
+  const groups = new Map<string, ClientRow[]>();
+  for (const r of rows) {
+    const client = clientConfigs.find((c) => c.members.some((m) => memberMatches(m, r)));
+    if (!client) result.push(r);
+    else groups.set(client.id, [...(groups.get(client.id) ?? []), r]);
+  }
+
+  for (const client of clientConfigs) {
+    const members = groups.get(client.id) ?? [];
+    for (const m of client.members) {
+      if (m.org && !members.some((r) => memberMatches(m, r))) {
+        const project = projects.find((p) => p.id === m.projectId)?.label ?? m.projectId;
+        warnings.push(`Cliente ${client.label}: no encontré la org «${m.org}» en ${project}`);
+      }
+    }
+    if (members.length === 0) continue;
+
+    const users = members.filter((r) => r.activeUsers !== null);
+    const merged: ClientRow = {
+      key: `cliente/${client.id}`,
+      projectId: `cliente:${client.id}`,
+      projectLabel: [...new Set(members.map((r) => r.projectLabel))].join(" + "),
+      orgId: null,
+      orgName: client.label,
+      activeUsers: users.length ? users.reduce((acc, r) => acc + (r.activeUsers ?? 0), 0) : null,
+      internal: false,
+      lines: [],
+      byProvider: {},
+      measured: 0,
+      allocated: 0,
+      fixed: 0,
+      total: 0,
+    };
+    for (const r of members) {
+      for (const line of r.lines) {
+        merged.lines.push({ ...line, note: [`${r.projectLabel} · ${r.orgName}`, line.note].filter(Boolean).join(" · ") });
+        merged.byProvider[line.provider] = (merged.byProvider[line.provider] ?? 0) + line.usd;
+      }
+      merged.measured += r.measured;
+      merged.allocated += r.allocated;
+      merged.fixed += r.fixed;
+      merged.total += r.total;
+    }
+    result.push(merged);
+  }
+  return result;
 }
