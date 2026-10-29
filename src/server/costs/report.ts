@@ -73,6 +73,7 @@ export async function buildReport(month: string): Promise<Report> {
       return result;
     } catch (err) {
       const missing = err instanceof MissingCredential;
+      if (!missing) console.error(`[costos] ${provider}:`, (err as Error).message);
       sources.push({ provider, ok: false, error: (err as Error).message });
       return { lines: [], warnings: missing ? [] : [`${provider}: ${(err as Error).message}`] };
     }

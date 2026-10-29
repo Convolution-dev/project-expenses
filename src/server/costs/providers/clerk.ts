@@ -1,18 +1,35 @@
 import { projects } from "@/server/costs/catalog";
-import { credentials, getJson } from "@/server/costs/credentials";
+import { credentials } from "@/server/costs/credentials";
 import type { OrgInfo, OrgWeights, Period, ProviderResult } from "@/server/costs/types";
 
 type Org = { id: string; name: string; slug?: string };
 type Membership = { public_user_data: { user_id: string } };
 type User = { id: string; last_active_at: number | null };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Clerk rate-limits per instance; one membership call per org adds up, so back off on 429. */
+async function clerkGet<T>(secret: string, url: string): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } });
+    if (res.status === 429 && attempt < 4) {
+      await sleep(Number(res.headers.get("retry-after") ?? 1) * 1000 * (attempt + 1));
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`GET ${new URL(url).pathname} → ${res.status} ${(await res.text()).slice(0, 200)}`);
+    }
+    return res.json() as Promise<T>;
+  }
+}
+
 async function listAll<T>(secret: string, path: string): Promise<T[]> {
   const items: T[] = [];
   for (let offset = 0; ; offset += 500) {
     const sep = path.includes("?") ? "&" : "?";
-    const page = await getJson<T[] | { data: T[] }>(
+    const page = await clerkGet<T[] | { data: T[] }>(
+      secret,
       `https://api.clerk.com/v1/${path}${sep}limit=500&offset=${offset}`,
-      { headers: { Authorization: `Bearer ${secret}` } },
     );
     const data = Array.isArray(page) ? page : page.data;
     items.push(...data);
@@ -30,8 +47,15 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
   const weights: OrgWeights[] = [];
   const warnings: string[] = [];
 
+  // One app failing (bad key, outage) must not hide every other app's orgs.
+  const guarded = (label: string, fn: () => Promise<void>) =>
+    fn().catch((err: Error) => {
+      console.error(`[costos] Clerk ${label}:`, err.message);
+      warnings.push(`Clerk (${label}): ${err.message}`);
+    });
+
   await Promise.all(
-    projects.map(async (project) => {
+    projects.map((project) => guarded(project.label, async () => {
       if (!project.clerkSecretEnv) return;
       const secret = credentials.env(project.clerkSecretEnv);
       if (!secret) {
@@ -63,12 +87,12 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
         byOrg[org.id] = count;
       }
       weights.push({ projectId: project.id, metric: "usuarios activos", byOrg });
-    }),
+    })),
   );
 
   // Dev instances only contribute org names, so their org-tagged costs reach a client.
   await Promise.all(
-    projects.map(async (project) => {
+    projects.map((project) => guarded(`${project.label} dev`, async () => {
       if (!project.clerkDevSecretEnv) return;
       const secret = credentials.env(project.clerkDevSecretEnv);
       if (!secret) {
@@ -78,7 +102,7 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
       for (const org of await listAll<Org>(secret, "organizations")) {
         orgs.push({ orgId: org.id, projectId: project.id, name: org.name, slug: org.slug, activeUsers: 0, dev: true });
       }
-    }),
+    })),
   );
 
   return { lines: [], orgs, weights, warnings };
