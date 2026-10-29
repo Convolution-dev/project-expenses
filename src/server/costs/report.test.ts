@@ -70,6 +70,12 @@ describe("allocate", () => {
     expect(total).toBeCloseTo(25);
   });
 
+  it("resolves an org given by name or slug, ignoring HTML-escaped ampersands", () => {
+    const named: OrgInfo[] = [{ orgId: "org_mga", projectId: "crm", name: "MG&amp;A", slug: "mg-a-1", activeUsers: 0 }];
+    const rows = byKey(allocate([line({ provider: "postmark", projectId: "crm", orgName: "MG&A", basis: "fixed", usd: 15 })], named, [], [], []));
+    expect(rows.get("crm/org_mga")?.fixed).toBe(15);
+  });
+
   describe("clients", () => {
     const clientOrgs: OrgInfo[] = [
       ...orgs,

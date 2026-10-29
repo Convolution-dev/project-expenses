@@ -136,9 +136,12 @@ export const clients: ClientConfig[] = [
   },
 ];
 
-/** Postmark servers mapped to a client. Servers not listed are unattributed. */
-export const postmarkServers: Record<number, { projectId: string; orgId?: string }> = {
-  // 19603569: { projectId: "crm", orgId: "org_..." }, // Mansilla Garzón & Asociados — verificar
+/**
+ * Postmark servers mapped to a project and, optionally, a Clerk org (name or slug).
+ * The plan is split by emails sent; a month with no emails charges it to the `default` server.
+ */
+export const postmarkServers: Record<number, { projectId: string; org?: string; default?: boolean }> = {
+  19603569: { projectId: "crm", org: "MG&A", default: true }, // Mansilla Garzón & Asociados
 };
 
 /**
@@ -147,7 +150,8 @@ export const postmarkServers: Record<number, { projectId: string; orgId?: string
  */
 export const manualFixedCosts: { provider: "clerk" | "postmark" | "manual"; category: string; usd: number; projectId?: string }[] = [
   // { provider: "clerk", category: "Plan Pro", usd: 25, projectId: "crm" },
-  // { provider: "postmark", category: "Plan", usd: 15 },
+  // Postmark has no billing API: update when the plan changes (checked 2026-10-29).
+  { provider: "postmark", category: "Plan", usd: 55 },
 ];
 
 /** How shared fixed costs are split across billable clients. */

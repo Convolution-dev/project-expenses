@@ -27,7 +27,7 @@ Los costos compartidos (sin proyecto) van a los clientes facturables; los proyec
 | Convex | API interna del dashboard (`/usage/query`) | Uso × tarifa Starter (`convexRates`), descontando lo incluido. Contra el gasto real de Convex: 2% de diferencia (oct-2026). Puede romperse si Convex cambia los IDs |
 | PlanetScale | `organizations/{org}/invoices` | Factura del mes. Si hay varias bases se divide en partes iguales |
 | Clerk | Backend API por app | Orgs y usuarios activos (`last_active_at`); exacto para el mes en curso, subestima meses pasados |
-| Postmark | `/servers` + `/stats/outbound` | El plan (`manualFixedCosts`) se reparte por emails enviados de cada server |
+| Postmark | `/servers` + `/stats/outbound` | El plan (`manualFixedCosts`, cargado a mano: Postmark no tiene API de facturación) se reparte por emails enviados de cada server; un mes sin envíos va entero al server `default` |
 | Uso por org | `GET /internal/cost-usage` de cada app | Bytes almacenados por org (foto actual). Cache de 24 h por proyecto: el endpoint recorre todas las tablas |
 
 El mapeo de recursos a proyectos está en `src/server/costs/catalog.ts`.
