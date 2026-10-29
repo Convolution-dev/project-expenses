@@ -90,7 +90,8 @@ export async function buildReport(month: string): Promise<Report> {
   ]);
   const convexCheck = await convexCurrentSpend().catch(() => undefined);
 
-  const lines = results.flatMap((r) => r.lines);
+  const excluded = new Set(projects.filter((p) => p.excluded).map((p) => p.id));
+  const lines = results.flatMap((r) => r.lines).filter((l) => !l.projectId || !excluded.has(l.projectId));
   const orgs = results.flatMap((r) => r.orgs ?? []);
   const weights = results.flatMap((r) => r.weights ?? []);
   const warnings = results.flatMap((r) => r.warnings ?? []);

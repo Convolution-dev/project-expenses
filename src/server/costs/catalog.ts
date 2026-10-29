@@ -27,6 +27,8 @@ export type ProjectConfig = {
   singleTenant?: boolean;
   /** Internal Convolution work, not billable to anyone. */
   internal?: boolean;
+  /** Left out of the report entirely: its resources are recognized but not counted. */
+  excluded?: boolean;
 };
 
 export const projects: ProjectConfig[] = [
@@ -74,6 +76,7 @@ export const projects: ProjectConfig[] = [
   {
     id: "minicrm2",
     label: "MiniCRM (minicrm.space)",
+    excluded: true, // sin uso real: solo una cuenta de prueba de Wences (2026-10-29)
     vercelProjects: ["minicrm2"],
     convexProjects: [2023027],
     planetscaleDatabases: [],
