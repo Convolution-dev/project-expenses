@@ -127,7 +127,12 @@ export const clients: ClientConfig[] = [
   {
     id: "persys",
     label: "Persys",
-    members: [{ projectId: "persys" }, { projectId: "persys-crm" }],
+    members: [
+      { projectId: "persys" },
+      { projectId: "persys-crm" },
+      { projectId: "minicrm", org: "Persys" },
+      { projectId: "minicrm", org: "M&M Distribución" },
+    ],
   },
   {
     id: "diaz-yofre",
