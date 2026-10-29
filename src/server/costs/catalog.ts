@@ -137,7 +137,10 @@ export const clients: ClientConfig[] = [
   {
     id: "diaz-yofre",
     label: "Díaz Yofre",
-    members: [{ projectId: "crm", org: "Díaz Yofre & Asoc." }],
+    members: [
+      { projectId: "crm", org: "Díaz Yofre & Asoc." },
+      { projectId: "crm", org: "test" }, // cuenta de test de Convolution; hoy TocToc solo lo usa Díaz Yofre
+    ],
   },
 ];
 
