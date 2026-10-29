@@ -1,6 +1,7 @@
 /**
  * Maps every provider resource to a project. A project is one deployed app;
- * a client is (project, Clerk org). Edit this file when a resource is added.
+ * by default a client is (project, Clerk org), and `clients` groups several of
+ * those under one customer. Edit this file when a resource is added.
  *
  * Entries marked `// verificar` are inferred from names and need confirmation.
  */
@@ -18,6 +19,8 @@ export type ProjectConfig = {
   aiGatewayKeys: string[];
   /** Env var holding this project's production Clerk secret key. */
   clerkSecretEnv?: string;
+  /** Env var holding the dev instance's Clerk key: its orgs can be assigned to a client. */
+  clerkDevSecretEnv?: string;
   /** Env vars for the per-org storage endpoint added to the app. */
   usageEndpoint?: { urlEnv: string; secretEnv: string };
   /** For apps without Clerk orgs: the whole project is a single client. */
@@ -86,19 +89,11 @@ export const projects: ProjectConfig[] = [
     planetscaleDatabases: ["mga"], // verificar
     aiGatewayKeys: ["gestion-judicial"],
     clerkSecretEnv: "CLERK_SECRET_KEY_GESTION_JUDICIAL",
+    clerkDevSecretEnv: "CLERK_SECRET_KEY_GESTION_JUDICIAL_DEV",
     usageEndpoint: {
       urlEnv: "USAGE_URL_GESTION_JUDICIAL",
       secretEnv: "USAGE_SECRET_GESTION_JUDICIAL",
     },
-  },
-  {
-    id: "custodia",
-    label: "Custodia (testkey)", // verificar: qué es
-    vercelProjects: [],
-    convexProjects: [],
-    planetscaleDatabases: [],
-    aiGatewayKeys: ["testkey-custodia"],
-    singleTenant: true,
   },
   {
     id: "interno",
@@ -106,9 +101,38 @@ export const projects: ProjectConfig[] = [
     vercelProjects: ["crm-landing", "convolution-landing", "project-expenses"],
     convexProjects: [2051308, 1450362, 1229907], // proyect-expenses, eguia-backend, automations
     planetscaleDatabases: [],
-    aiGatewayKeys: [],
+    aiGatewayKeys: ["testkey-custodia"],
     singleTenant: true,
     internal: true,
+  },
+];
+
+export type ClientConfig = {
+  id: string;
+  label: string;
+  /** `org` matches a Clerk org's name or slug (case-insensitive); omitted = the whole project. */
+  members: { projectId: string; org?: string }[];
+};
+
+/** Customers spanning several apps or orgs. Rows not listed here stay as (project, org). */
+export const clients: ClientConfig[] = [
+  {
+    id: "mansilla",
+    label: "Mansilla Garzón & Asociados",
+    members: [
+      { projectId: "gestion-judicial" }, // la app entera, prod y dev (mga-dev-economico)
+      { projectId: "crm", org: "MG&A" },
+    ],
+  },
+  {
+    id: "persys",
+    label: "Persys",
+    members: [{ projectId: "persys" }, { projectId: "persys-crm" }],
+  },
+  {
+    id: "diaz-yofre",
+    label: "Díaz Yofre",
+    members: [{ projectId: "crm", org: "Díaz Yofre & Asoc." }],
   },
 ];
 

@@ -2,7 +2,7 @@ import { projects } from "@/server/costs/catalog";
 import { credentials, getJson } from "@/server/costs/credentials";
 import type { OrgInfo, OrgWeights, Period, ProviderResult } from "@/server/costs/types";
 
-type Org = { id: string; name: string };
+type Org = { id: string; name: string; slug?: string };
 type Membership = { public_user_data: { user_id: string } };
 type User = { id: string; last_active_at: number | null };
 
@@ -59,10 +59,25 @@ export async function clerkOrgs(period: Period): Promise<ProviderResult> {
       for (const org of projectOrgs) {
         const members = await listAll<Membership>(secret, `organizations/${org.id}/memberships`);
         const count = members.filter((m) => active.has(m.public_user_data.user_id)).length;
-        orgs.push({ orgId: org.id, projectId: project.id, name: org.name, activeUsers: count });
+        orgs.push({ orgId: org.id, projectId: project.id, name: org.name, slug: org.slug, activeUsers: count });
         byOrg[org.id] = count;
       }
       weights.push({ projectId: project.id, metric: "usuarios activos", byOrg });
+    }),
+  );
+
+  // Dev instances only contribute org names, so their org-tagged costs reach a client.
+  await Promise.all(
+    projects.map(async (project) => {
+      if (!project.clerkDevSecretEnv) return;
+      const secret = credentials.env(project.clerkDevSecretEnv);
+      if (!secret) {
+        warnings.push(`Clerk: falta ${project.clerkDevSecretEnv} (dev de ${project.label})`);
+        return;
+      }
+      for (const org of await listAll<Org>(secret, "organizations")) {
+        orgs.push({ orgId: org.id, projectId: project.id, name: org.name, slug: org.slug, activeUsers: 0, dev: true });
+      }
     }),
   );
 

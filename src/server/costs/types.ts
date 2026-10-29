@@ -34,7 +34,15 @@ export type OrgWeights = {
   byOrg: Record<string, number>;
 };
 
-export type OrgInfo = { orgId: string; projectId: string; name: string; activeUsers: number };
+export type OrgInfo = {
+  orgId: string;
+  projectId: string;
+  name: string;
+  activeUsers: number;
+  slug?: string;
+  /** From the project's dev Clerk instance: never weighs production costs. */
+  dev?: boolean;
+};
 
 export type ProviderResult = {
   lines: CostLine[];
