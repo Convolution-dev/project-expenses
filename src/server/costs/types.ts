@@ -22,6 +22,8 @@ export type CostLine = {
   category: string;
   projectId: string | null;
   orgId: string | null;
+  /** Org name or slug, resolved to `orgId` within `projectId` when the provider has no id. */
+  orgName?: string;
   basis: CostBasis;
   usd: number;
   note?: string;

@@ -194,7 +194,12 @@ export function allocate(
   const singleTenantId = (p: ProjectConfig) => p.id;
   const shared: CostLine[] = [];
 
-  for (const line of lines) {
+  for (let line of lines) {
+    if (line.orgName && !line.orgId) {
+      const org = orgs.find((o) => o.projectId === line.projectId && orgMatches(o, line.orgName!));
+      if (org) line = { ...line, orgId: org.orgId };
+      else warnings.push(`${line.provider}: no encontré la org «${line.orgName}» en ${line.projectId}`);
+    }
     // Org-tagged lines (AI Gateway): resolve the project from the org.
     if (line.orgId) {
       const org = orgById.get(line.orgId);
@@ -270,6 +275,13 @@ export function allocate(
   return grouped;
 }
 
+const norm = (s: string) => s.replace(/&amp;/g, "&").trim().toLowerCase();
+
+/** A configured org reference matches a Clerk org by name or slug. */
+function orgMatches(org: OrgInfo, ref: string): boolean {
+  return [org.name, org.slug].some((n) => n && norm(n) === norm(ref));
+}
+
 /**
  * Folds the (project, org) rows of each configured client into one row, so a
  * customer using several apps or orgs shows once and counts once for shared costs.
@@ -280,12 +292,11 @@ function groupClients(
   clientConfigs: ClientConfig[],
   warnings: string[],
 ): ClientRow[] {
-  const norm = (s: string) => s.trim().toLowerCase();
   const memberMatches = (m: ClientConfig["members"][number], r: ClientRow) => {
     if (m.projectId !== r.projectId) return false;
     if (!m.org) return true;
     const org = r.orgId ? orgById.get(r.orgId) : undefined;
-    return !!org && [org.name, org.slug].some((n) => n && norm(n) === norm(m.org!));
+    return !!org && orgMatches(org, m.org);
   };
 
   const result: ClientRow[] = [];

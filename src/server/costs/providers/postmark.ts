@@ -35,6 +35,21 @@ export async function postmarkCosts(period: Period): Promise<ProviderResult> {
   const total = sent.reduce((acc, s) => acc + s.sent, 0);
   const warnings: string[] = [];
   const lines: CostLine[] = [];
+  if (total === 0) {
+    const fallback = Object.entries(postmarkServers).find(([, t]) => t.default);
+    const server = Servers.find((s) => s.ID === Number(fallback?.[0]));
+    lines.push({
+      provider: "postmark",
+      category: `Plan${server ? ` (${server.Name})` : ""}`,
+      projectId: fallback?.[1].projectId ?? null,
+      orgId: null,
+      orgName: fallback?.[1].org,
+      basis: "fixed",
+      usd: planUsd,
+      note: "Sin emails enviados en el período: plan completo al server por defecto",
+    });
+    return { lines, warnings };
+  }
   for (const { server, sent: count } of sent) {
     if (count === 0) continue;
     const target = postmarkServers[server.ID];
@@ -43,7 +58,8 @@ export async function postmarkCosts(period: Period): Promise<ProviderResult> {
       provider: "postmark",
       category: `Emails (${server.Name})`,
       projectId: target?.projectId ?? null,
-      orgId: target?.orgId ?? null,
+      orgId: null,
+      orgName: target?.org,
       basis: "allocated",
       usd: (planUsd * count) / total,
       note: `${count} de ${total} emails enviados`,
