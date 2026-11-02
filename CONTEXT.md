@@ -5,12 +5,14 @@ Shared glossary for the project-expenses domain. Definitions only — no impleme
 ## Glossary
 
 ### User
-An authentication identity (managed by Convex Auth). Can log in and perform actions.
+An authentication identity (managed by Convex Auth). Can log in and perform actions. Sign-up is closed: Users are created by hand (`npx convex run users:create`).
 
 ### Participant
 A User who has been added to a Project as a financial actor — owes money or is owed money within that Project's settlement.
 
-In v1, Participant and User are strictly 1:1: every Participant is a logged-in User, and there are no "ghost" Participants (financial actors who cannot log in). A User becomes a Participant only by being added to a specific Project; a User is not automatically a Participant of every Project.
+Being a Participant does not gate access: every User sees and edits every Project. Participation only decides who can be a Payer, Recipient or Beneficiary.
+
+In v1, Participant and User are strictly 1:1: every Participant is a logged-in User, and there are no "ghost" Participants (financial actors who cannot log in). A User becomes a Participant only by being added to a specific Project (any User may add one); a User is not automatically a Participant of every Project.
 
 A Participant cannot be removed from a Project while they have a nonzero Balance or appear in any item that is not yet squared — removal is allowed only once they are settled up, to avoid orphaned debt.
 
@@ -57,4 +59,4 @@ Balances are computed per-month; there is no netting across Periods in v1.
 The calendar month an Expense, Income, or Settlement belongs to, stored as a field on each record. Periods do not open or close — they are purely a grouping and reporting dimension. Records remain freely editable; nothing is ever frozen.
 
 ### Registrar
-The Participant who recorded an Expense (or Income) in the app. An audit field only — does not affect settlement math. Any Participant may register an Expense or Income on behalf of any Payer or Recipient.
+The User who recorded an Expense (or Income) in the app; they need not be a Participant. An audit field only — does not affect settlement math. Any User may register an Expense or Income on behalf of any Payer or Recipient.

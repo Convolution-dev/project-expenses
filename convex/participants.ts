@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { MutationCtx, mutation, query } from "./_generated/server";
-import { requireParticipant } from "./lib/access";
+import { requireProjectAccess } from "./lib/access";
 import { appError } from "./lib/errors";
 
 export interface ParticipantView {
@@ -46,7 +46,7 @@ async function existingMembership(
 export const add = mutation({
   args: { projectId: v.id("projects"), email: v.string() },
   handler: async (ctx, { projectId, email }) => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     const user = await findUserByEmail(ctx, email);
     const already = await existingMembership(ctx, projectId, user._id);
     if (already !== null) {
@@ -59,7 +59,7 @@ export const add = mutation({
 export const list = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, { projectId }): Promise<ParticipantView[]> => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     const memberships = await ctx.db
       .query("participants")
       .withIndex("by_project", (q) => q.eq("projectId", projectId))
@@ -117,7 +117,7 @@ async function appearsInAnyItem(
 export const remove = mutation({
   args: { projectId: v.id("projects"), userId: v.id("users") },
   handler: async (ctx, { projectId, userId }) => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     const membership = await existingMembership(ctx, projectId, userId);
     if (membership === null) {
       return;

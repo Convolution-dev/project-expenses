@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { requireParticipant } from "./lib/access";
+import { requireProjectAccess } from "./lib/access";
 import {
   assertPeriod,
   assertPositiveCents,
@@ -23,7 +23,7 @@ export const create = mutation({
     attachments: attachmentsValidator,
   },
   handler: async (ctx, args) => {
-    const registrarId = await requireParticipant(ctx, args.projectId);
+    const registrarId = await requireProjectAccess(ctx, args.projectId);
     assertPositiveCents(args.amountCents);
     assertPeriod(args.period);
     if (args.fromUserId === args.toUserId) {
@@ -43,7 +43,7 @@ export const create = mutation({
 export const listByPeriod = query({
   args: { projectId: v.id("projects"), period: v.string() },
   handler: async (ctx, { projectId, period }): Promise<Doc<"settlements">[]> => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     return ctx.db
       .query("settlements")
       .withIndex("by_project_period", (q) =>
@@ -60,7 +60,7 @@ export const remove = mutation({
     if (settlement === null) {
       return;
     }
-    await requireParticipant(ctx, settlement.projectId);
+    await requireProjectAccess(ctx, settlement.projectId);
     await ctx.db.delete(settlementId);
   },
 });

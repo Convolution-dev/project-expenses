@@ -10,17 +10,17 @@ import Button from "@/components/ui/Button";
 import IconBadge from "@/components/ui/IconBadge";
 import NewProjectForm from "@/components/projects/NewProjectForm";
 
-// Projects home: the Projects the signed-in User participates in, plus a
-// create affordance. listMine already scopes to the current User. (#5)
+// Projects home: every Project (all Users see all of them), plus a create
+// affordance.
 export default function ProjectsPage() {
-  const projects = useQuery(api.projects.listMine);
+  const projects = useQuery(api.projects.list);
   const [creating, setCreating] = useState(false);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Proyectos"
-        description="Espacios de gastos compartidos a los que perteneces."
+        description="Espacios de gastos compartidos."
         action={
           !creating && (
             <Button onClick={() => setCreating(true)}>Nuevo proyecto</Button>

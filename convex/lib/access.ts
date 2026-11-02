@@ -14,22 +14,16 @@ export async function requireUserId(ctx: Ctx): Promise<Id<"users">> {
   return userId;
 }
 
-// The signed-in User, guaranteed to be a Participant of the given Project.
-// Permissions are flat in v1: any Participant may act within their Projects.
-// See CONTEXT.md → Participant.
-export async function requireParticipant(
+// The signed-in User, acting on an existing Project. Every User sees and edits
+// every Project: being a Participant only decides who is part of the money
+// math. See CONTEXT.md → Project, Participant.
+export async function requireProjectAccess(
   ctx: Ctx,
   projectId: Id<"projects">,
 ): Promise<Id<"users">> {
   const userId = await requireUserId(ctx);
-  const membership = await ctx.db
-    .query("participants")
-    .withIndex("by_project_user", (q) =>
-      q.eq("projectId", projectId).eq("userId", userId),
-    )
-    .unique();
-  if (membership === null) {
-    throw appError("NOT_PARTICIPANT", "No eres participante de este proyecto.");
+  if ((await ctx.db.get(projectId)) === null) {
+    throw appError("PROJECT_NOT_FOUND", "El proyecto no existe.");
   }
   return userId;
 }

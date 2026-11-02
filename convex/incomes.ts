@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { requireParticipant } from "./lib/access";
+import { requireProjectAccess } from "./lib/access";
 import { assertValidItem } from "./lib/items";
 import { attachmentsValidator, splitValidator } from "./lib/validators";
 import { appError } from "./lib/errors";
@@ -20,7 +20,7 @@ export const create = mutation({
     attachments: attachmentsValidator,
   },
   handler: async (ctx, args) => {
-    const registrarId = await requireParticipant(ctx, args.projectId);
+    const registrarId = await requireProjectAccess(ctx, args.projectId);
     await assertValidItem(ctx, {
       projectId: args.projectId,
       amountCents: args.amountCents,
@@ -35,7 +35,7 @@ export const create = mutation({
 export const listByPeriod = query({
   args: { projectId: v.id("projects"), period: v.string() },
   handler: async (ctx, { projectId, period }): Promise<Doc<"incomes">[]> => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     return ctx.db
       .query("incomes")
       .withIndex("by_project_period", (q) =>
@@ -62,7 +62,7 @@ export const update = mutation({
     if (income === null) {
       throw appError("INCOME_NOT_FOUND", "No se encontró el ingreso.");
     }
-    await requireParticipant(ctx, income.projectId);
+    await requireProjectAccess(ctx, income.projectId);
     await assertValidItem(ctx, {
       projectId: income.projectId,
       amountCents: fields.amountCents,
@@ -81,7 +81,7 @@ export const remove = mutation({
     if (income === null) {
       return;
     }
-    await requireParticipant(ctx, income.projectId);
+    await requireProjectAccess(ctx, income.projectId);
     await ctx.db.delete(incomeId);
   },
 });

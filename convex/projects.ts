@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
-import { requireParticipant, requireUserId } from "./lib/access";
+import { requireProjectAccess, requireUserId } from "./lib/access";
 
 const DEFAULT_CURRENCY = "USD";
 const splitModeValidator = v.union(v.literal("equal"), v.literal("weighted"));
@@ -27,26 +27,19 @@ export const create = mutation({
   },
 });
 
-// The Projects the signed-in User participates in.
-export const listMine = query({
+// Every Project, for any signed-in User. CONTEXT.md → Project.
+export const list = query({
   args: {},
   handler: async (ctx): Promise<Doc<"projects">[]> => {
-    const userId = await requireUserId(ctx);
-    const memberships = await ctx.db
-      .query("participants")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-    const projects = await Promise.all(
-      memberships.map((membership) => ctx.db.get(membership.projectId)),
-    );
-    return projects.filter((project) => project !== null);
+    await requireUserId(ctx);
+    return ctx.db.query("projects").order("desc").collect();
   },
 });
 
 export const get = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, { projectId }) => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     return ctx.db.get(projectId);
   },
 });

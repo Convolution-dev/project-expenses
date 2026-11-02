@@ -23,6 +23,7 @@ import type * as participants from "../participants.js";
 import type * as projects from "../projects.js";
 import type * as settlements from "../settlements.js";
 import type * as testing from "../testing.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   settlements: typeof settlements;
   testing: typeof testing;
+  users: typeof users;
 }>;
 
 /**

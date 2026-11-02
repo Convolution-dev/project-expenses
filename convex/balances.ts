@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { QueryCtx, query } from "./_generated/server";
-import { requireParticipant } from "./lib/access";
+import { requireProjectAccess } from "./lib/access";
 import {
   PeriodLedger,
   Transfer,
@@ -65,7 +65,7 @@ export interface PeriodBalance {
 export const forPeriod = query({
   args: { projectId: v.id("projects"), period: v.string() },
   handler: async (ctx, { projectId, period }): Promise<PeriodBalance> => {
-    await requireParticipant(ctx, projectId);
+    await requireProjectAccess(ctx, projectId);
     const ledger = await loadLedger(ctx, projectId, period);
     const net = [...netBalances(ledger)].map(([userId, cents]) => ({
       userId,
