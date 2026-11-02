@@ -1,7 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { attachmentsValidator, splitValidator } from "./lib/validators";
+import {
+  attachmentsValidator,
+  currencyValidator,
+  splitValidator,
+} from "./lib/validators";
 
 export default defineSchema({
   // Convex Auth tables (includes `users` — our User identity).
@@ -10,8 +14,7 @@ export default defineSchema({
   // A container scoping all money math. CONTEXT.md → Project.
   projects: defineTable({
     name: v.string(),
-    currency: v.optional(v.string()),
-    currencies: v.optional(v.array(v.union(v.literal("ARS"), v.literal("USD")))),
+    currencies: v.array(currencyValidator), // at least one, e.g. ["ARS", "USD"]
     defaultSplitMode: v.union(v.literal("equal"), v.literal("weighted")),
     createdBy: v.id("users"),
   }).index("by_createdBy", ["createdBy"]),
@@ -31,9 +34,9 @@ export default defineSchema({
     projectId: v.id("projects"),
     title: v.string(),
     note: v.optional(v.string()),
-    amountCents: v.number(), // integer cents, project currency
+    amountCents: v.number(), // integer cents, in `currency`
     payerId: v.id("users"),
-    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
+    currency: currencyValidator, // one of the Project's currencies
     split: splitValidator,
     period: v.string(), // "YYYY-MM"
     attachments: attachmentsValidator,
@@ -50,7 +53,7 @@ export default defineSchema({
     description: v.string(),
     amountCents: v.number(),
     recipientId: v.id("users"),
-    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
+    currency: currencyValidator, // one of the Project's currencies
     split: splitValidator,
     period: v.string(), // "YYYY-MM"
     attachments: attachmentsValidator,
@@ -64,7 +67,7 @@ export default defineSchema({
     projectId: v.id("projects"),
     fromUserId: v.id("users"), // debtor
     toUserId: v.id("users"), // creditor
-    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
+    currency: currencyValidator, // one of the Project's currencies
     amountCents: v.number(),
     period: v.string(), // "YYYY-MM"
     note: v.optional(v.string()),

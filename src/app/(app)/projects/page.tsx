@@ -8,7 +8,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import IconBadge from "@/components/ui/IconBadge";
-import NewProjectForm from "@/components/projects/NewProjectForm";
+import ProjectForm from "@/components/projects/ProjectForm";
 
 // Projects home: every Project (all Users see all of them), plus a create
 // affordance.
@@ -30,7 +30,7 @@ export default function ProjectsPage() {
 
       {creating && (
         <Card>
-          <NewProjectForm onDone={() => setCreating(false)} />
+          <ProjectForm onDone={() => setCreating(false)} />
         </Card>
       )}
 
@@ -58,7 +58,7 @@ export default function ProjectsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{project.name}</p>
                       <p className="truncate text-sm text-muted">
-                        {project.currency} ·{" "}
+                        {project.currencies.join(" / ")} ·{" "}
                         {project.defaultSplitMode === "equal"
                           ? "Equitativo"
                           : "Ponderado"}

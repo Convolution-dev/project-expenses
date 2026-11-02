@@ -1,8 +1,13 @@
 // Conversion between major units (what a user types, e.g. "12.34") and the
 // integer cents the backend stores. Kept Convex/React-free so it stays unit
-// testable. CONTEXT.md → Project (amounts are exact cents in one currency).
+// testable. CONTEXT.md → Project (amounts are exact cents in their currency).
 
 const CENTS_PER_UNIT = 100;
+
+// The currencies a Project can hold; mirrors convex/lib/validators.ts →
+// currencyValidator. Amounts are never converted between them.
+export const CURRENCIES = ["ARS", "USD"] as const;
+export type Currency = (typeof CURRENCIES)[number];
 
 // Parse a major-unit string into positive integer cents, or null if it is not
 // a valid positive money amount. Accepts an optional thousands-free decimal
@@ -21,7 +26,7 @@ export function formatAmount(cents: number): string {
   return (cents / CENTS_PER_UNIT).toFixed(2);
 }
 
-// Format integer cents for display alongside the Project currency code.
+// Format integer cents for display alongside its currency code.
 export function formatCents(cents: number, currency: string): string {
   return `${currency} ${formatAmount(cents)}`;
 }

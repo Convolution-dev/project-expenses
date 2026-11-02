@@ -18,12 +18,10 @@ const DIRECTION = {
 // color-coded amount, and a kebab menu hiding edit/delete.
 export default function MovementRow({
   movement,
-  currency,
   items,
   onOpen,
 }: {
   movement: Movement;
-  currency: string;
   items: MenuItem[];
   onOpen: () => void;
 }) {
@@ -45,7 +43,7 @@ export default function MovementRow({
           className={`shrink-0 text-sm font-semibold tabular-nums ${direction.amount}`}
         >
           {direction.sign}
-          {formatCents(movement.amountCents, currency)}
+          {formatCents(movement.amountCents, movement.currency)}
         </span>
       </button>
       <Menu items={items} />

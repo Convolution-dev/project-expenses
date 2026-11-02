@@ -34,3 +34,26 @@ test("listing projects requires being signed in", async () => {
   const { t } = await actingAs(modules, "ana@example.com");
   await expect(t.query(api.projects.list, {})).rejects.toThrow();
 });
+
+test("deleting a project removes its participants and movements", async () => {
+  const { t, userId, as } = await actingAs(modules, "ana@example.com");
+  const projectId = await as.mutation(api.projects.create, { name: "Office Trip" });
+  await as.mutation(api.expenses.create, {
+    projectId,
+    title: "Hotel",
+    amountCents: 1000,
+    payerId: userId,
+    split: { mode: "equal", beneficiaries: [{ userId }] },
+    period: "2026-06",
+    attachments: [],
+  });
+
+  await as.mutation(api.projects.remove, { projectId });
+
+  expect(await as.query(api.projects.get, { projectId })).toBeNull();
+  const leftovers = await t.run(async (ctx) => [
+    ...(await ctx.db.query("participants").collect()),
+    ...(await ctx.db.query("expenses").collect()),
+  ]);
+  expect(leftovers).toEqual([]);
+});

@@ -10,10 +10,10 @@ import Card from "@/components/ui/Card";
 import ParticipantsPanel from "@/components/projects/ParticipantsPanel";
 import MovementsFeed from "@/components/feed/MovementsFeed";
 import SettleSection from "@/components/settle/SettleSection";
+import ProjectActions from "@/components/projects/ProjectActions";
 
-// Project detail. Reads projects.get, which also enforces the viewer is a
-// Participant. Money views (expenses, incomes, settlements, balance) mount
-// here in later slices.
+// Project detail: header with edit/delete, Participants, the movements feed
+// and the Settle view. Any signed-in User can open any Project.
 export default function ProjectDetailPage({
   params,
 }: {
@@ -35,26 +35,27 @@ export default function ProjectDetailPage({
       ) : project === null ? (
         <Card>
           <p className="text-sm text-muted">
-            Proyecto no encontrado, o no tienes acceso.
+            Proyecto no encontrado.
           </p>
         </Card>
       ) : (
         <>
           <PageHeader
             title={project.name}
-            description={`${project.currency} · Reparto predeterminado: ${
+            description={`${project.currencies.join(" / ")} · Reparto predeterminado: ${
               project.defaultSplitMode === "equal"
                 ? "Equitativo"
                 : "Ponderado por partes"
             }`}
+            action={<ProjectActions project={project} />}
           />
           <ParticipantsPanel projectId={project._id} />
           <MovementsFeed
             projectId={project._id}
-            currency={project.currency}
+            currencies={project.currencies}
             defaultSplitMode={project.defaultSplitMode}
           />
-          <SettleSection projectId={project._id} currency={project.currency} />
+          <SettleSection projectId={project._id} />
         </>
       )}
     </div>

@@ -5,7 +5,8 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import type { ParticipantView } from "../../../convex/participants";
-import { parseAmountToCents } from "@/lib/money/currency";
+import { type Currency, parseAmountToCents } from "@/lib/money/currency";
+import AmountField from "@/components/money/AmountField";
 import { convexErrorMessage } from "@/lib/convexError";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -18,13 +19,13 @@ import AttachmentsField from "@/components/attachments/AttachmentsField";
 // two must differ. CONTEXT.md → Settlement. (#10)
 export default function SettlementForm({
   projectId,
-  currency,
+  currencies,
   participants,
   defaultPeriod,
   onDone,
 }: {
   projectId: Id<"projects">;
-  currency: string;
+  currencies: Currency[];
   participants: ParticipantView[];
   defaultPeriod: string;
   onDone: () => void;
@@ -38,6 +39,7 @@ export default function SettlementForm({
     participants[1]?.userId ?? "",
   );
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState<Currency>(currencies[0]);
   const [period, setPeriod] = useState(defaultPeriod);
   const [note, setNote] = useState("");
   const [attachments, setAttachments] = useState<Id<"_storage">[]>([]);
@@ -69,6 +71,7 @@ export default function SettlementForm({
         fromUserId,
         toUserId,
         amountCents,
+        currency,
         period,
         note: note.trim() || undefined,
         attachments,
@@ -112,17 +115,16 @@ export default function SettlementForm({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label={`Monto (${currency})`} htmlFor="settlement-amount">
-          <Input
-            id="settlement-amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            required
-            autoFocus
-          />
-        </Field>
+        <AmountField
+          id="settlement-amount"
+          currency={currency}
+          currencies={currencies}
+          onCurrencyChange={setCurrency}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+          autoFocus
+        />
         <Field label="Mes" htmlFor="settlement-month">
           <Input
             id="settlement-month"

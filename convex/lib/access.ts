@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx, QueryCtx } from "../_generated/server";
 import { appError } from "./errors";
 
@@ -22,8 +22,17 @@ export async function requireProjectAccess(
   projectId: Id<"projects">,
 ): Promise<Id<"users">> {
   const userId = await requireUserId(ctx);
-  if ((await ctx.db.get(projectId)) === null) {
+  await getProjectOrThrow(ctx, projectId);
+  return userId;
+}
+
+export async function getProjectOrThrow(
+  ctx: Ctx,
+  projectId: Id<"projects">,
+): Promise<Doc<"projects">> {
+  const project = await ctx.db.get(projectId);
+  if (project === null) {
     throw appError("PROJECT_NOT_FOUND", "El proyecto no existe.");
   }
-  return userId;
+  return project;
 }

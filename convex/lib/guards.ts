@@ -1,11 +1,13 @@
 import { Infer } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { MutationCtx, QueryCtx } from "../_generated/server";
-import { splitValidator } from "./validators";
+import { currencyValidator, splitValidator } from "./validators";
 import { appError } from "./errors";
+import { getProjectOrThrow } from "./access";
 
 type Ctx = QueryCtx | MutationCtx;
 type Split = Infer<typeof splitValidator>;
+type Currency = Infer<typeof currencyValidator>;
 
 const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -56,4 +58,23 @@ export function assertHasBeneficiaries(split: Split): void {
   if (split.beneficiaries.length === 0) {
     throw appError("NO_BENEFICIARIES", "Se requiere al menos un beneficiario.");
   }
+}
+
+// The currency an item is recorded in: the requested one, which must be one of
+// the Project's currencies, or the Project's first currency when omitted.
+// CONTEXT.md → Project.
+export async function resolveCurrency(
+  ctx: Ctx,
+  projectId: Id<"projects">,
+  requested: Currency | undefined,
+): Promise<Currency> {
+  const project = await getProjectOrThrow(ctx, projectId);
+  const currency = requested ?? project.currencies[0];
+  if (!project.currencies.includes(currency)) {
+    throw appError(
+      "INVALID_CURRENCY",
+      `El proyecto no usa ${currency}. Monedas: ${project.currencies.join(", ")}.`,
+    );
+  }
+  return currency;
 }

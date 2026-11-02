@@ -6,8 +6,9 @@ import {
   assertPeriod,
   assertPositiveCents,
   assertUsersAreParticipants,
+  resolveCurrency,
 } from "./lib/guards";
-import { attachmentsValidator } from "./lib/validators";
+import { attachmentsValidator, currencyValidator } from "./lib/validators";
 import { appError } from "./lib/errors";
 
 // Record an actual transfer that clears debt, full or partial. CONTEXT.md →
@@ -18,6 +19,7 @@ export const create = mutation({
     fromUserId: v.id("users"),
     toUserId: v.id("users"),
     amountCents: v.number(),
+    currency: v.optional(currencyValidator),
     period: v.string(),
     note: v.optional(v.string()),
     attachments: attachmentsValidator,
@@ -36,7 +38,8 @@ export const create = mutation({
       args.fromUserId,
       args.toUserId,
     ]);
-    return ctx.db.insert("settlements", { ...args, registrarId });
+    const currency = await resolveCurrency(ctx, args.projectId, args.currency);
+    return ctx.db.insert("settlements", { ...args, currency, registrarId });
   },
 });
 

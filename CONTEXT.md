@@ -17,7 +17,9 @@ In v1, Participant and User are strictly 1:1: every Participant is a logged-in U
 A Participant cannot be removed from a Project while they have a nonzero Balance or appear in any item that is not yet squared — removal is allowed only once they are settled up, to avoid orphaned debt.
 
 ### Project
-A container that groups Participants, Expenses, Incomes, and Settlements. All money math is scoped to a single Project — there is no cross-project balance. Each Project has a single currency (default USD); every amount in the Project is in that currency. Per-item currency and FX conversion are out of scope for v1.
+A container that groups Participants, Expenses, Incomes, and Settlements. All money math is scoped to a single Project — there is no cross-project balance. Each Project holds one or more currencies (ARS, USD). Every Expense, Income and Settlement is recorded in one of them. Amounts are never converted: totals and Balances are kept per currency. FX conversion is out of scope.
+
+Any User may edit a Project (name, currencies, default Split Rule) or delete it. A currency can only be dropped while no item uses it. Deleting a Project removes everything in it and cannot be undone.
 
 ### Expense
 A cost incurred within a Project. Has exactly one Payer, a set of Beneficiaries, an amount, and a split rule. May carry one or more optional attached bills (PDF/image).
@@ -53,7 +55,7 @@ A recorded transfer of money from one Participant to another to clear debt withi
 ### Balance
 The live, computed net of who owes whom within a Project, scoped to a Period. Derived on demand from that Period's Expenses, Incomes, and Settlements — never stored. Clicking the Settle button computes the Balance for the selected month and shows the suggested transfers needed to bring it to zero. Suggested transfers use the **minimal set** that zeroes everyone's net position (fewest debtor→creditor payments), each accompanied by a plain-text explanation of why it is owed. A Period is "done" when its Balance is zero (everyone is square).
 
-Balances are computed per-month; there is no netting across Periods in v1.
+Balances are computed per month and per currency; there is no netting across Periods or across currencies.
 
 ### Period
 The calendar month an Expense, Income, or Settlement belongs to, stored as a field on each record. Periods do not open or close — they are purely a grouping and reporting dimension. Records remain freely editable; nothing is ever frozen.

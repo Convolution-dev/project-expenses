@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { formatCents } from "@/lib/money/currency";
+import { type Currency, formatCents } from "@/lib/money/currency";
 import { convexErrorMessage } from "@/lib/convexError";
 import { buildMovements, Movement } from "@/components/feed/movements";
 import MovementRow from "@/components/feed/MovementRow";
@@ -53,11 +53,11 @@ function formTitle(form: FormState): string {
 // add-flow, and the edit/delete modals — replacing the old per-table sections.
 export default function MovementsFeed({
   projectId,
-  currency,
+  currencies,
   defaultSplitMode,
 }: {
   projectId: Id<"projects">;
-  currency: string;
+  currencies: Currency[];
   defaultSplitMode: SplitMode;
 }) {
   const [period, setPeriod] = useState(currentPeriod);
@@ -103,11 +103,20 @@ export default function MovementsFeed({
     incomes === undefined ||
     settlements === undefined;
 
-  const totals = useMemo(() => {
-    const gastos = (expenses ?? []).reduce((s, e) => s + e.amountCents, 0);
-    const ingresos = (incomes ?? []).reduce((s, i) => s + i.amountCents, 0);
-    return { gastos, ingresos, neto: ingresos - gastos };
-  }, [expenses, incomes]);
+  // One KPI row per currency: amounts in different currencies never add up.
+  const totals = useMemo(
+    () =>
+      currencies.map((currency) => {
+        const sum = (items: { amountCents: number; currency: string }[]) =>
+          items
+            .filter((item) => item.currency === currency)
+            .reduce((s, item) => s + item.amountCents, 0);
+        const gastos = sum(expenses ?? []);
+        const ingresos = sum(incomes ?? []);
+        return { currency, gastos, ingresos, neto: ingresos - gastos };
+      }),
+    [currencies, expenses, incomes],
+  );
 
   const memberCount = participants?.length ?? 0;
 
@@ -189,26 +198,28 @@ export default function MovementsFeed({
             className="w-auto"
           />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <KpiTile
-            label="Gastos"
-            value={formatCents(totals.gastos, currency)}
-            tone="text-danger"
-          />
-          <KpiTile
-            label="Ingresos"
-            value={formatCents(totals.ingresos, currency)}
-            tone="text-success"
-          />
-          <KpiTile
-            label="Neto"
-            value={`${totals.neto >= 0 ? "+" : "-"}${formatCents(
-              Math.abs(totals.neto),
-              currency,
-            )}`}
-            tone={totals.neto >= 0 ? "text-success" : "text-danger"}
-          />
-        </div>
+        {totals.map(({ currency, gastos, ingresos, neto }) => (
+          <div key={currency} className="grid grid-cols-3 gap-3">
+            <KpiTile
+              label="Gastos"
+              value={formatCents(gastos, currency)}
+              tone="text-danger"
+            />
+            <KpiTile
+              label="Ingresos"
+              value={formatCents(ingresos, currency)}
+              tone="text-success"
+            />
+            <KpiTile
+              label="Neto"
+              value={`${neto >= 0 ? "+" : "-"}${formatCents(
+                Math.abs(neto),
+                currency,
+              )}`}
+              tone={neto >= 0 ? "text-success" : "text-danger"}
+            />
+          </div>
+        ))}
       </Card>
 
       <Card>
@@ -227,7 +238,6 @@ export default function MovementsFeed({
               <MovementRow
                 key={`${movement.kind}-${movement.id}`}
                 movement={movement}
-                currency={currency}
                 items={rowItems(movement)}
                 onOpen={() => setDetail(movement)}
               />
@@ -243,7 +253,7 @@ export default function MovementsFeed({
           {form.kind === "expense" && (
             <ExpenseForm
               projectId={projectId}
-              currency={currency}
+              currencies={currencies}
               defaultSplitMode={defaultSplitMode}
               participants={participants}
               defaultPeriod={period}
@@ -254,7 +264,7 @@ export default function MovementsFeed({
           {form.kind === "income" && (
             <IncomeForm
               projectId={projectId}
-              currency={currency}
+              currencies={currencies}
               defaultSplitMode={defaultSplitMode}
               participants={participants}
               defaultPeriod={period}
@@ -265,7 +275,7 @@ export default function MovementsFeed({
           {form.kind === "settlement" && (
             <SettlementForm
               projectId={projectId}
-              currency={currency}
+              currencies={currencies}
               participants={participants}
               defaultPeriod={period}
               onDone={() => setForm(null)}
@@ -278,7 +288,6 @@ export default function MovementsFeed({
         <Dialog open onClose={() => setDetail(null)} title={detail.title}>
           <MovementDetail
             movement={detail}
-            currency={currency}
             onEdit={
               detail.expense
                 ? () => {

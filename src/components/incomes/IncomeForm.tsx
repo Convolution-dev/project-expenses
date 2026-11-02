@@ -6,7 +6,13 @@ import { api } from "../../../convex/_generated/api";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import type { ParticipantView } from "../../../convex/participants";
 import { splitAmount } from "@/lib/money/split";
-import { formatAmount, formatCents, parseAmountToCents } from "@/lib/money/currency";
+import {
+  type Currency,
+  formatAmount,
+  formatCents,
+  parseAmountToCents,
+} from "@/lib/money/currency";
+import AmountField from "@/components/money/AmountField";
 import { convexErrorMessage } from "@/lib/convexError";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -46,7 +52,7 @@ function buildRows(
 // stores. CONTEXT.md → Income, Split Rule. (#9)
 export default function IncomeForm({
   projectId,
-  currency,
+  currencies,
   defaultSplitMode,
   participants,
   defaultPeriod,
@@ -54,7 +60,7 @@ export default function IncomeForm({
   onDone,
 }: {
   projectId: Id<"projects">;
-  currency: string;
+  currencies: Currency[];
   defaultSplitMode: SplitMode;
   participants: ParticipantView[];
   defaultPeriod: string;
@@ -71,6 +77,9 @@ export default function IncomeForm({
   );
   const [recipientId, setRecipientId] = useState<Id<"users"> | "">(
     income?.recipientId ?? participants[0]?.userId ?? "",
+  );
+  const [currency, setCurrency] = useState<Currency>(
+    income?.currency ?? currencies[0],
   );
   const [period, setPeriod] = useState(income?.period ?? defaultPeriod);
   const [mode, setMode] = useState<SplitMode>(
@@ -151,6 +160,7 @@ export default function IncomeForm({
           title: title.trim(),
           description: description.trim(),
           amountCents,
+          currency,
           recipientId,
           split,
           period,
@@ -162,6 +172,7 @@ export default function IncomeForm({
           title: title.trim(),
           description: description.trim(),
           amountCents,
+          currency,
           recipientId,
           split,
           period,
@@ -199,16 +210,15 @@ export default function IncomeForm({
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label={`Monto (${currency})`} htmlFor="income-amount">
-          <Input
-            id="income-amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            required
-          />
-        </Field>
+        <AmountField
+          id="income-amount"
+          currency={currency}
+          currencies={currencies}
+          onCurrencyChange={setCurrency}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
         <Field label="Receptor" htmlFor="income-recipient">
           <Select
             id="income-recipient"

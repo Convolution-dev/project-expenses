@@ -32,12 +32,10 @@ function periodLabel(period: string): string {
 // two with an edit form); delete is always available.
 export default function MovementDetail({
   movement,
-  currency,
   onEdit,
   onDelete,
 }: {
   movement: Movement;
-  currency: string;
   onEdit?: () => void;
   onDelete: () => void;
 }) {
@@ -58,7 +56,7 @@ export default function MovementDetail({
         </span>
         <p className={`mt-2 text-2xl font-semibold tabular-nums ${tone.className}`}>
           {tone.sign}
-          {formatCents(movement.amountCents, currency)}
+          {formatCents(movement.amountCents, movement.currency)}
         </p>
         <p className="mt-1 text-sm text-muted">{movement.subtitle}</p>
       </div>

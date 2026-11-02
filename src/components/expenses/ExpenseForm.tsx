@@ -6,7 +6,13 @@ import { api } from "../../../convex/_generated/api";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import type { ParticipantView } from "../../../convex/participants";
 import { splitAmount } from "@/lib/money/split";
-import { formatAmount, formatCents, parseAmountToCents } from "@/lib/money/currency";
+import {
+  type Currency,
+  formatAmount,
+  formatCents,
+  parseAmountToCents,
+} from "@/lib/money/currency";
+import AmountField from "@/components/money/AmountField";
 import { convexErrorMessage } from "@/lib/convexError";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -46,7 +52,7 @@ function buildRows(
 // stores. CONTEXT.md → Expense, Split Rule. (#7)
 export default function ExpenseForm({
   projectId,
-  currency,
+  currencies,
   defaultSplitMode,
   participants,
   defaultPeriod,
@@ -54,7 +60,7 @@ export default function ExpenseForm({
   onDone,
 }: {
   projectId: Id<"projects">;
-  currency: string;
+  currencies: Currency[];
   defaultSplitMode: SplitMode;
   participants: ParticipantView[];
   defaultPeriod: string;
@@ -71,6 +77,9 @@ export default function ExpenseForm({
   );
   const [payerId, setPayerId] = useState<Id<"users"> | "">(
     expense?.payerId ?? participants[0]?.userId ?? "",
+  );
+  const [currency, setCurrency] = useState<Currency>(
+    expense?.currency ?? currencies[0],
   );
   const [period, setPeriod] = useState(expense?.period ?? defaultPeriod);
   const [mode, setMode] = useState<SplitMode>(
@@ -153,6 +162,7 @@ export default function ExpenseForm({
           title: title.trim(),
           note: note.trim() || undefined,
           amountCents,
+          currency,
           payerId,
           split,
           period,
@@ -164,6 +174,7 @@ export default function ExpenseForm({
           title: title.trim(),
           note: note.trim() || undefined,
           amountCents,
+          currency,
           payerId,
           split,
           period,
@@ -200,16 +211,15 @@ export default function ExpenseForm({
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label={`Monto (${currency})`} htmlFor="expense-amount">
-          <Input
-            id="expense-amount"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            required
-          />
-        </Field>
+        <AmountField
+          id="expense-amount"
+          currency={currency}
+          currencies={currencies}
+          onCurrencyChange={setCurrency}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
         <Field label="Pagador" htmlFor="expense-payer">
           <Select
             id="expense-payer"

@@ -15,6 +15,7 @@ export interface Movement {
   title: string;
   subtitle: string;
   amountCents: number;
+  currency: string;
   signed: MovementDirection;
   expense?: Doc<"expenses">;
   income?: Doc<"incomes">;
@@ -47,6 +48,7 @@ export function buildMovements(
         expense.split.beneficiaries.length,
       )}`,
       amountCents: expense.amountCents,
+      currency: expense.currency,
       signed: "out",
       expense,
     });
@@ -62,6 +64,7 @@ export function buildMovements(
         income.split.beneficiaries.length,
       )}`,
       amountCents: income.amountCents,
+      currency: income.currency,
       signed: "in",
       income,
     });
@@ -75,6 +78,7 @@ export function buildMovements(
       title: `${nameOf(settlement.fromUserId)} → ${nameOf(settlement.toUserId)}`,
       subtitle: settlement.note ?? "Pago entre participantes",
       amountCents: settlement.amountCents,
+      currency: settlement.currency,
       signed: "transfer",
       settlement,
     });

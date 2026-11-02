@@ -13,5 +13,9 @@ export const splitValidator = v.object({
   ),
 });
 
+// The currencies a Project can hold (src/lib/money/currency.ts → CURRENCIES).
+// Amounts are never converted between them. CONTEXT.md → Project.
+export const currencyValidator = v.union(v.literal("ARS"), v.literal("USD"));
+
 // Storage references for attached bills/receipts. CONTEXT.md → Expense/Income.
 export const attachmentsValidator = v.array(v.id("_storage"));

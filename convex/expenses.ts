@@ -3,7 +3,12 @@ import { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { requireProjectAccess } from "./lib/access";
 import { assertValidItem } from "./lib/items";
-import { attachmentsValidator, splitValidator } from "./lib/validators";
+import { resolveCurrency } from "./lib/guards";
+import {
+  attachmentsValidator,
+  currencyValidator,
+  splitValidator,
+} from "./lib/validators";
 import { appError } from "./lib/errors";
 
 // Record a cost fronted by one Payer for a set of Beneficiaries. The split is
@@ -14,6 +19,7 @@ export const create = mutation({
     title: v.string(),
     note: v.optional(v.string()),
     amountCents: v.number(),
+    currency: v.optional(currencyValidator),
     payerId: v.id("users"),
     split: splitValidator,
     period: v.string(),
@@ -28,7 +34,8 @@ export const create = mutation({
       actorId: args.payerId,
       split: args.split,
     });
-    return ctx.db.insert("expenses", { ...args, registrarId });
+    const currency = await resolveCurrency(ctx, args.projectId, args.currency);
+    return ctx.db.insert("expenses", { ...args, currency, registrarId });
   },
 });
 
@@ -52,6 +59,7 @@ export const update = mutation({
     title: v.string(),
     note: v.optional(v.string()),
     amountCents: v.number(),
+    currency: v.optional(currencyValidator),
     payerId: v.id("users"),
     split: splitValidator,
     period: v.string(),
@@ -70,7 +78,12 @@ export const update = mutation({
       actorId: fields.payerId,
       split: fields.split,
     });
-    await ctx.db.patch(expenseId, fields);
+    const currency = await resolveCurrency(
+      ctx,
+      expense.projectId,
+      fields.currency ?? expense.currency,
+    );
+    await ctx.db.patch(expenseId, { ...fields, currency });
   },
 });
 
