@@ -10,7 +10,8 @@ export default defineSchema({
   // A container scoping all money math. CONTEXT.md → Project.
   projects: defineTable({
     name: v.string(),
-    currency: v.string(), // ISO code, default "USD"
+    currency: v.optional(v.string()),
+    currencies: v.optional(v.array(v.union(v.literal("ARS"), v.literal("USD")))),
     defaultSplitMode: v.union(v.literal("equal"), v.literal("weighted")),
     createdBy: v.id("users"),
   }).index("by_createdBy", ["createdBy"]),
@@ -32,6 +33,7 @@ export default defineSchema({
     note: v.optional(v.string()),
     amountCents: v.number(), // integer cents, project currency
     payerId: v.id("users"),
+    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
     split: splitValidator,
     period: v.string(), // "YYYY-MM"
     attachments: attachmentsValidator,
@@ -48,6 +50,7 @@ export default defineSchema({
     description: v.string(),
     amountCents: v.number(),
     recipientId: v.id("users"),
+    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
     split: splitValidator,
     period: v.string(), // "YYYY-MM"
     attachments: attachmentsValidator,
@@ -61,6 +64,7 @@ export default defineSchema({
     projectId: v.id("projects"),
     fromUserId: v.id("users"), // debtor
     toUserId: v.id("users"), // creditor
+    currency: v.optional(v.union(v.literal("ARS"), v.literal("USD"))),
     amountCents: v.number(),
     period: v.string(), // "YYYY-MM"
     note: v.optional(v.string()),
